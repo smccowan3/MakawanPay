@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface PaymentCounterProps {
   count: number;
-  onCountUpdate: (newCount: number) => void;
+  onCountUpdate: (newCount: number) => Promise<void>;
 }
 
 export default function PaymentCounter({ count, onCountUpdate }: PaymentCounterProps) {
@@ -16,7 +16,7 @@ export default function PaymentCounter({ count, onCountUpdate }: PaymentCounterP
   const [newCount, setNewCount] = useState(count.toString());
   const { toast } = useToast();
 
-  const handleUpdateCounter = (e: React.FormEvent) => {
+  const handleUpdateCounter = async (e: React.FormEvent) => {
     e.preventDefault();
     const value = parseInt(newCount);
     if (isNaN(value) || value < 0) {
@@ -28,7 +28,7 @@ export default function PaymentCounter({ count, onCountUpdate }: PaymentCounterP
       return;
     }
     
-    onCountUpdate(value);
+    await onCountUpdate(value);
     toast({
       title: "カウンター更新完了",
       description: "支払い回数が更新されました",

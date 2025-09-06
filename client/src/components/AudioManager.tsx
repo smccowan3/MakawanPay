@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Settings, Upload, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { localStorageService } from "@/lib/localStorage";
+import { hybridStorageService } from "@/lib/hybridStorage";
 
 export default function AudioManager() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -17,13 +17,21 @@ export default function AudioManager() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Load audio settings from localStorage on component mount
-    const audioSettings = localStorageService.getAudioSettings();
-    setAddPaymentAudioUrl(audioSettings.addPaymentAudioUrl || "");
-    setPaymentSuccessAudioUrl(audioSettings.paymentSuccessAudioUrl || "");
+    // Load audio settings from hybrid storage on component mount
+    const loadAudioSettings = async () => {
+      try {
+        const audioSettings = await hybridStorageService.getAudioSettings();
+        setAddPaymentAudioUrl(audioSettings.addPaymentAudioUrl || "");
+        setPaymentSuccessAudioUrl(audioSettings.paymentSuccessAudioUrl || "");
+      } catch (error) {
+        console.error('Failed to load audio settings:', error);
+      }
+    };
+    
+    loadAudioSettings();
   }, []);
 
-  const handleFileUpload = (file: File, type: 'add' | 'success') => {
+  const handleFileUpload = async (file: File, type: 'add' | 'success') => {
     if (!file.type.startsWith('audio/')) {
       toast({
         title: "ファイルエラー",
@@ -34,19 +42,27 @@ export default function AudioManager() {
     }
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const url = e.target?.result as string;
-      if (type === 'add') {
-        setAddPaymentAudioUrl(url);
-        localStorageService.setAddPaymentAudio(url);
-      } else {
-        setPaymentSuccessAudioUrl(url);
-        localStorageService.setPaymentSuccessAudio(url);
+      try {
+        if (type === 'add') {
+          setAddPaymentAudioUrl(url);
+          await hybridStorageService.setAddPaymentAudio(url);
+        } else {
+          setPaymentSuccessAudioUrl(url);
+          await hybridStorageService.setPaymentSuccessAudio(url);
+        }
+        toast({
+          title: "音声ファイル更新",
+          description: "音声ファイルが更新されました",
+        });
+      } catch (error) {
+        toast({
+          title: "エラー",
+          description: "音声ファイルの保存に失敗しました",
+          variant: "destructive",
+        });
       }
-      toast({
-        title: "音声ファイル更新",
-        description: "音声ファイルが更新されました",
-      });
     };
     reader.readAsDataURL(file);
   };

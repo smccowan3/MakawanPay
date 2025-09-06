@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, CreditCard, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGooglePay } from "@/hooks/useGooglePay";
-import { localStorageService } from "@/lib/localStorage";
+import { hybridStorageService } from "@/lib/hybridStorage";
 
 interface PaymentButtonsProps {
   currentCount: number;
@@ -20,7 +20,7 @@ export default function PaymentButtons({ currentCount, onCountUpdate }: PaymentB
     setIsAddingPayment(true);
     
     try {
-      const newCount = localStorageService.incrementPaymentCount();
+      const newCount = await hybridStorageService.incrementPaymentCount();
       onCountUpdate(newCount);
       
       toast({
@@ -59,10 +59,8 @@ export default function PaymentButtons({ currentCount, onCountUpdate }: PaymentB
       });
       
       if (paymentData) {
-        // Simulate processing delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const newCount = localStorageService.decrementPaymentCount();
+        // Use hybrid storage for payment processing
+        const newCount = await hybridStorageService.decrementPaymentCount();
         onCountUpdate(newCount);
         
         toast({

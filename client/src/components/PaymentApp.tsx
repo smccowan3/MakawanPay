@@ -3,23 +3,44 @@ import PaymentCounter from "./PaymentCounter";
 import PaymentButtons from "./PaymentButtons";
 import AudioManager from "./AudioManager";
 import { Card, CardContent } from "@/components/ui/card";
-import { CreditCard, Shield } from "lucide-react";
-import { localStorageService } from "@/lib/localStorage";
+import { CreditCard, Shield, Wifi, WifiOff } from "lucide-react";
+import { hybridStorageService } from "@/lib/hybridStorage";
 
 export default function PaymentApp() {
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isServerOnline, setIsServerOnline] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Load count from localStorage on app start
-    const savedCount = localStorageService.getPaymentCount();
-    setCount(savedCount);
-    setIsLoading(false);
+    // Load count from hybrid storage on app start
+    const loadInitialData = async () => {
+      try {
+        const savedCount = await hybridStorageService.getPaymentCount();
+        const serverStatus = await hybridStorageService.isServerOnline();
+        setCount(savedCount);
+        setIsServerOnline(serverStatus);
+      } catch (error) {
+        console.error('Failed to load initial data:', error);
+        setCount(5); // Default fallback
+        setIsServerOnline(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadInitialData();
   }, []);
 
-  const updateCount = (newCount: number) => {
+  const updateCount = async (newCount: number) => {
     setCount(newCount);
-    localStorageService.setPaymentCount(newCount);
+    try {
+      await hybridStorageService.setPaymentCount(newCount);
+      // Check server status after operation
+      const serverStatus = await hybridStorageService.isServerOnline();
+      setIsServerOnline(serverStatus);
+    } catch (error) {
+      console.error('Failed to update count:', error);
+    }
   };
 
   if (isLoading) {
@@ -46,12 +67,28 @@ export default function PaymentApp() {
     <div className="max-w-md mx-auto p-4 md:p-8" data-testid="payment-app">
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold japanese-text mb-2 text-primary" data-testid="app-title">
-          マカワンペイ
-        </h1>
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <h1 className="text-3xl font-bold japanese-text text-primary" data-testid="app-title">
+            マカワンペイ
+          </h1>
+          {isServerOnline !== null && (
+            <div className="flex items-center gap-1" data-testid="connection-status">
+              {isServerOnline ? (
+                <Wifi className="h-5 w-5 text-accent" />
+              ) : (
+                <WifiOff className="h-5 w-5 text-muted-foreground" />
+              )}
+            </div>
+          )}
+        </div>
         <p className="text-muted-foreground japanese-text" data-testid="app-subtitle">
           簡単お支払いアプリ
         </p>
+        {isServerOnline === false && (
+          <p className="text-xs text-muted-foreground mt-1 japanese-text" data-testid="offline-notice">
+            オフラインモード - データは端末に保存されます
+          </p>
+        )}
       </div>
 
       {/* Main Payment Card */}
