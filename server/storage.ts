@@ -29,7 +29,11 @@ export class MemStorage implements IStorage {
 
   async createPaymentCounter(insertCounter: InsertPaymentCounter): Promise<PaymentCounter> {
     const id = randomUUID();
-    const counter: PaymentCounter = { ...insertCounter, id };
+    const counter: PaymentCounter = { 
+      id,
+      userId: insertCounter.userId || "default",
+      count: insertCounter.count || 0
+    };
     this.paymentCounters.set(counter.userId, counter);
     return counter;
   }

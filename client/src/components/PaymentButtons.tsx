@@ -22,7 +22,7 @@ export default function PaymentButtons({ currentCount }: PaymentButtonsProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/payment-counter"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payment-counter/default"] });
       toast({
         title: "支払い追加完了",
         description: "支払い回数が追加されました",
@@ -56,7 +56,7 @@ export default function PaymentButtons({ currentCount }: PaymentButtonsProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/payment-counter"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payment-counter/default"] });
       toast({
         title: "お支払い完了",
         description: "お支払いが正常に処理されました",

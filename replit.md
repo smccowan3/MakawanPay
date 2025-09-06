@@ -2,6 +2,12 @@
 
 This is a Japanese payment application called "マカワンペイ" (Makawan Pay) - a simple payment counter app that allows users to track and process payments. The application features a payment counter that can be incremented (adding payments) and decremented (processing payments), with Google Pay integration for actual payment processing. The interface is bilingual with Japanese text elements and includes audio feedback for user interactions.
 
+## Recent Changes (September 2025)
+- **Fixed Counter Updates**: Resolved issue where add payment button wasn't incrementing the counter due to query cache invalidation mismatch
+- **Manual Counter Editing**: Added edit button next to counter display allowing manual input of payment count values
+- **Custom Audio Files**: Implemented audio settings dialog with file upload capability for custom jingle sounds
+- **TypeScript Improvements**: Fixed type safety issues in storage layer and component props
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.

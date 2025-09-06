@@ -4,9 +4,10 @@ import PaymentButtons from "./PaymentButtons";
 import AudioManager from "./AudioManager";
 import { Card, CardContent } from "@/components/ui/card";
 import { CreditCard, Shield } from "lucide-react";
+import type { PaymentCounter as PaymentCounterType } from "@shared/schema";
 
 export default function PaymentApp() {
-  const { data: counter, isLoading, error } = useQuery({
+  const { data: counter, isLoading, error } = useQuery<PaymentCounterType>({
     queryKey: ["/api/payment-counter/default"],
   });
 
@@ -63,7 +64,7 @@ export default function PaymentApp() {
       <Card className="rounded-xl card-shadow border border-border">
         <CardContent className="p-8">
           {/* Payment Counter Display */}
-          <PaymentCounter count={counter?.count || 0} />
+          <PaymentCounter count={counter?.count ?? 0} />
 
           {/* Payment Status */}
           <div className="mb-6 p-3 bg-muted rounded-lg text-center" data-testid="payment-status">
@@ -74,7 +75,7 @@ export default function PaymentApp() {
           </div>
 
           {/* Action Buttons */}
-          <PaymentButtons currentCount={counter?.count || 0} />
+          <PaymentButtons currentCount={counter?.count ?? 0} />
 
           {/* Google Pay Info */}
           <div className="mt-6 p-4 bg-muted rounded-lg" data-testid="payment-method-info">

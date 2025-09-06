@@ -20,7 +20,7 @@ export function useGooglePay() {
 
   useEffect(() => {
     // Check if Google Pay is available
-    if (typeof window !== "undefined" && window.google?.payments) {
+    if (typeof window !== "undefined" && window.google?.payments?.api) {
       const paymentsClient = new window.google.payments.api.PaymentsClient({
         environment: process.env.NODE_ENV === "production" ? "PRODUCTION" : "TEST",
       });
@@ -41,12 +41,12 @@ export function useGooglePay() {
 
       paymentsClient
         .isReadyToPay(readinessRequest)
-        .then((response) => {
+        .then((response: any) => {
           if (response.result) {
             setIsGooglePayReady(true);
           }
         })
-        .catch((err) => {
+        .catch((err: any) => {
           console.error("Google Pay readiness check failed:", err);
         });
     } else {
@@ -57,7 +57,7 @@ export function useGooglePay() {
   }, []);
 
   const processPayment = async (request: PaymentRequest): Promise<PaymentData | null> => {
-    if (typeof window !== "undefined" && window.google?.payments && isGooglePayReady) {
+    if (typeof window !== "undefined" && window.google?.payments?.api && isGooglePayReady) {
       try {
         const paymentsClient = new window.google.payments.api.PaymentsClient({
           environment: process.env.NODE_ENV === "production" ? "PRODUCTION" : "TEST",
