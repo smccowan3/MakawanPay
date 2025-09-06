@@ -9,6 +9,7 @@ This is a Japanese payment application called "マカワンペイ" (Makawan Pay)
 - **TypeScript Improvements**: Fixed type safety issues in storage layer and component props
 - **Local Storage Implementation**: Converted app to use browser localStorage for data persistence, ensuring each user's data saves on their machine independently
 - **Hybrid Storage System**: Implemented smart storage that uses PostgreSQL database when server is available, automatically falls back to localStorage when offline, with visual connection status indicators
+- **PWA Implementation**: Added Progressive Web App functionality with manifest.json, service worker, and installable features for mobile and desktop
 
 # User Preferences
 
