@@ -2,29 +2,47 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Settings, Upload, Play } from "lucide-react";
+import { Settings, Upload, Play, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { hybridStorageService } from "@/lib/hybridStorage";
+import donaldDuckCharge from "@assets/donald-duck-1-104310_1757122214346.mp3";
+import quackingSound from "@assets/quacking-sound-for-duck-96140_1757122228535.mp3";
 
 export default function AudioManager() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [addPaymentAudioUrl, setAddPaymentAudioUrl] = useState("");
-  const [paymentSuccessAudioUrl, setPaymentSuccessAudioUrl] = useState("");
+  const [addPaymentAudioUrl, setAddPaymentAudioUrl] = useState(donaldDuckCharge);
+  const [paymentSuccessAudioUrl, setPaymentSuccessAudioUrl] = useState(quackingSound);
 
   const addPaymentFileRef = useRef<HTMLInputElement>(null);
   const paymentSuccessFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  // Default Donald Duck sounds
+  const defaultSounds = {
+    addPayment: donaldDuckCharge,
+    paymentSuccess: quackingSound,
+  };
+
   useEffect(() => {
-    // Load audio settings from hybrid storage on component mount
+    // Load audio settings from hybrid storage or use Donald Duck defaults
     const loadAudioSettings = async () => {
       try {
         const audioSettings = await hybridStorageService.getAudioSettings();
-        setAddPaymentAudioUrl(audioSettings.addPaymentAudioUrl || "");
-        setPaymentSuccessAudioUrl(audioSettings.paymentSuccessAudioUrl || "");
+        setAddPaymentAudioUrl(audioSettings.addPaymentAudioUrl || defaultSounds.addPayment);
+        setPaymentSuccessAudioUrl(audioSettings.paymentSuccessAudioUrl || defaultSounds.paymentSuccess);
+        
+        // Set defaults if nothing is stored
+        if (!audioSettings.addPaymentAudioUrl) {
+          await hybridStorageService.setAddPaymentAudio(defaultSounds.addPayment);
+        }
+        if (!audioSettings.paymentSuccessAudioUrl) {
+          await hybridStorageService.setPaymentSuccessAudio(defaultSounds.paymentSuccess);
+        }
       } catch (error) {
         console.error('Failed to load audio settings:', error);
+        // Fallback to defaults
+        setAddPaymentAudioUrl(defaultSounds.addPayment);
+        setPaymentSuccessAudioUrl(defaultSounds.paymentSuccess);
       }
     };
     
@@ -65,6 +83,25 @@ export default function AudioManager() {
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const resetToDefaults = async () => {
+    try {
+      setAddPaymentAudioUrl(defaultSounds.addPayment);
+      setPaymentSuccessAudioUrl(defaultSounds.paymentSuccess);
+      await hybridStorageService.setAddPaymentAudio(defaultSounds.addPayment);
+      await hybridStorageService.setPaymentSuccessAudio(defaultSounds.paymentSuccess);
+      toast({
+        title: "デフォルト音声に復元",
+        description: "ドナルドダック音声に戻しました",
+      });
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: "デフォルト音声の復元に失敗しました",
+        variant: "destructive",
+      });
+    }
   };
 
   const testAudio = (audioId: string) => {
@@ -116,10 +153,25 @@ export default function AudioManager() {
               <DialogTitle className="japanese-text">音声設定</DialogTitle>
             </DialogHeader>
             <div className="space-y-6">
+              {/* Reset to Defaults Button */}
+              <div className="flex justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={resetToDefaults}
+                  className="gap-2 japanese-text"
+                  data-testid="button-reset-audio"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  ドナルドダック音声に戻す
+                </Button>
+              </div>
+
               {/* Add Payment Sound */}
               <div className="space-y-3">
                 <Label className="text-sm font-medium japanese-text">
-                  支払い追加音
+                  支払い追加音 (現在: ドナルドダック)
                 </Label>
                 <div className="flex gap-2">
                   <Button
@@ -158,7 +210,7 @@ export default function AudioManager() {
               {/* Payment Success Sound */}
               <div className="space-y-3">
                 <Label className="text-sm font-medium japanese-text">
-                  支払い完了音
+                  支払い完了音 (現在: ガーガー音)
                 </Label>
                 <div className="flex gap-2">
                   <Button
