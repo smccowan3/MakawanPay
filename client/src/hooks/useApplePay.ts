@@ -45,6 +45,8 @@ export function useApplePay() {
   const processPayment = async (request: PaymentRequest): Promise<PaymentData | null> => {
     if (typeof window !== "undefined" && window.ApplePaySession && isApplePayReady) {
       try {
+        console.log("Starting Apple Pay payment flow");
+        
         // Apple Pay payment request
         const paymentRequest = {
           countryCode: 'JP',
@@ -56,17 +58,20 @@ export function useApplePay() {
             amount: (request.amount / 100).toFixed(2), // Convert to decimal format
           },
         };
+        
+        console.log("Apple Pay payment request:", paymentRequest);
 
         return new Promise((resolve, reject) => {
           // Create Apple Pay session
           const session = new window.ApplePaySession(3, paymentRequest);
 
           session.onvalidatemerchant = (event: any) => {
-            // In production, you would validate with your server
-            // For now, we'll simulate validation
-            console.log("Apple Pay merchant validation requested");
+            console.log("Apple Pay merchant validation requested for:", event.validationURL);
             
-            // Mock merchant session (in production, this comes from your server)
+            // In production, you would validate with your server by calling event.validationURL
+            // For development/testing, we'll simulate a successful validation
+            
+            // Create a mock merchant session for testing
             const mockMerchantSession = {
               epochTimestamp: Date.now(),
               expiresAt: Date.now() + (1000 * 60 * 5), // 5 minutes
@@ -78,11 +83,13 @@ export function useApplePay() {
               signature: 'mock_signature',
             };
 
+            // Complete merchant validation (this would use a real session in production)
             try {
               session.completeMerchantValidation(mockMerchantSession);
+              console.log("Apple Pay merchant validation completed");
             } catch (error) {
-              console.log("Using mock validation for development");
-              // For development, continue without proper validation
+              console.error("Apple Pay merchant validation failed:", error);
+              reject(new Error("Apple Pay merchant validation failed"));
             }
           };
 
@@ -96,6 +103,8 @@ export function useApplePay() {
           };
 
           session.onpaymentauthorized = (event: any) => {
+            console.log("Apple Pay payment authorized:", event.payment);
+            
             // Process the payment
             const payment = event.payment;
             
@@ -110,29 +119,44 @@ export function useApplePay() {
               signedMessage: JSON.stringify(payment.token),
             };
 
-            // Complete the payment
+            // Complete the payment successfully
             session.completePayment(window.ApplePaySession.STATUS_SUCCESS);
+            console.log("Apple Pay payment completed successfully");
             resolve(paymentData);
           };
 
           session.oncancel = () => {
+            console.log("Apple Pay was cancelled by user");
             reject(new Error("Apple Pay was cancelled"));
           };
 
-          // Start the Apple Pay session
+          // Start the Apple Pay session - this opens the Apple Pay interface
+          console.log("Starting Apple Pay session...");
           session.begin();
         });
 
-      } catch (error) {
+      } catch (error: any) {
         console.error("Apple Pay payment failed:", error);
-        throw new Error("Apple Pay payment was cancelled or failed");
+        
+        // Handle specific Apple Pay errors
+        if (error.message.includes('cancelled')) {
+          throw new Error("Apple Pay payment was cancelled");
+        } else if (error.message.includes('not supported')) {
+          throw new Error("Apple Pay is not supported on this device");
+        } else {
+          throw new Error("Apple Pay payment failed: " + error.message);
+        }
       }
     } else {
       // Mock payment data for development/testing on Apple devices
-      if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad') || navigator.userAgent.includes('Mac')) {
-        console.log("Processing mock Apple Pay payment:", request);
+      const isAppleDevice = navigator.userAgent.includes('iPhone') || 
+                           navigator.userAgent.includes('iPad') || 
+                           navigator.userAgent.includes('Mac');
+      
+      if (isAppleDevice) {
+        console.log("Apple Pay not available, processing mock payment:", request);
         
-        // Simulate payment processing delay
+        // Simulate Apple Pay UI delay
         await new Promise(resolve => setTimeout(resolve, 1500));
         
         return {
@@ -146,6 +170,7 @@ export function useApplePay() {
         };
       }
       
+      // Not an Apple device
       return null;
     }
   };

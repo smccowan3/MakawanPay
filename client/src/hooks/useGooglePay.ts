@@ -19,48 +19,71 @@ export function useGooglePay() {
   const [isGooglePayReady, setIsGooglePayReady] = useState(false);
 
   useEffect(() => {
-    // Check if Google Pay is available
-    if (typeof window !== "undefined" && window.google?.payments?.api) {
-      const paymentsClient = new window.google.payments.api.PaymentsClient({
-        environment: process.env.NODE_ENV === "production" ? "PRODUCTION" : "TEST",
-      });
-
-      const readinessRequest = {
-        apiVersion: 2,
-        apiVersionMinor: 0,
-        allowedPaymentMethods: [
-          {
-            type: "CARD",
-            parameters: {
-              allowedAuthMethods: ["PAN_ONLY", "CRYPTOGRAM_3DS"],
-              allowedCardNetworks: ["MASTERCARD", "VISA"],
-            },
-          },
-        ],
-      };
-
-      paymentsClient
-        .isReadyToPay(readinessRequest)
-        .then((response: any) => {
-          if (response.result) {
-            setIsGooglePayReady(true);
-          }
-        })
-        .catch((err: any) => {
-          console.error("Google Pay readiness check failed:", err);
+    const checkGooglePay = () => {
+      // Check if Google Pay is available
+      if (typeof window !== "undefined" && window.google?.payments?.api) {
+        const paymentsClient = new window.google.payments.api.PaymentsClient({
+          environment: process.env.NODE_ENV === "production" ? "PRODUCTION" : "TEST",
         });
-    } else {
-      // For development/testing without Google Pay SDK
-      console.log("Google Pay SDK not available, using mock implementation");
-      setIsGooglePayReady(true);
-    }
-  }, []);
+
+        const readinessRequest = {
+          apiVersion: 2,
+          apiVersionMinor: 0,
+          allowedPaymentMethods: [
+            {
+              type: "CARD",
+              parameters: {
+                allowedAuthMethods: ["PAN_ONLY", "CRYPTOGRAM_3DS"],
+                allowedCardNetworks: ["MASTERCARD", "VISA"],
+              },
+            },
+          ],
+        };
+
+        paymentsClient
+          .isReadyToPay(readinessRequest)
+          .then((response: any) => {
+            if (response.result) {
+              setIsGooglePayReady(true);
+              console.log("Google Pay is ready");
+            } else {
+              console.log("Google Pay is not ready");
+            }
+          })
+          .catch((err: any) => {
+            console.error("Google Pay readiness check failed:", err);
+          });
+      } else if (window.googlePayReady) {
+        // Retry when Google Pay script is loaded
+        setTimeout(checkGooglePay, 100);
+      } else {
+        // For development/testing without Google Pay SDK
+        console.log("Google Pay SDK not available, using mock implementation");
+        setIsGooglePayReady(true);
+      }
+    };
+
+    // Initial check
+    checkGooglePay();
+    
+    // Also check when Google Pay script loads
+    const interval = setInterval(() => {
+      if (window.google?.payments?.api && !isGooglePayReady) {
+        checkGooglePay();
+        clearInterval(interval);
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [isGooglePayReady]);
 
   const processPayment = async (request: PaymentRequest): Promise<PaymentData | null> => {
     if (typeof window !== "undefined" && window.google?.payments?.api && isGooglePayReady) {
       try {
+        console.log("Starting Google Pay payment flow");
+        
         const paymentsClient = new window.google.payments.api.PaymentsClient({
-          environment: process.env.NODE_ENV === "production" ? "PRODUCTION" : "TEST",
+          environment: "TEST", // Always use TEST for development
         });
 
         const paymentDataRequest = {
@@ -76,7 +99,7 @@ export function useGooglePay() {
               tokenizationSpecification: {
                 type: "PAYMENT_GATEWAY",
                 parameters: {
-                  gateway: "example", // Replace with actual gateway
+                  gateway: "example",
                   gatewayMerchantId: "exampleGatewayMerchantId",
                 },
               },
@@ -84,16 +107,18 @@ export function useGooglePay() {
           ],
           transactionInfo: {
             totalPriceStatus: "FINAL",
-            totalPrice: request.amount.toString(),
+            totalPrice: (request.amount / 100).toFixed(2), // Convert to decimal format (e.g., 100 -> "1.00")
             currencyCode: request.currency,
           },
           merchantInfo: {
             merchantName: "マカワンペイ",
-            merchantId: process.env.VITE_GOOGLE_PAY_MERCHANT_ID || "BCR2DN4TZHZL6IAG",
+            merchantId: "01234567890123456789",
           },
         };
 
+        console.log("Loading Google Pay payment data...");
         const paymentData = await paymentsClient.loadPaymentData(paymentDataRequest);
+        console.log("Google Pay payment successful:", paymentData);
         
         // Extract payment token from the response
         const paymentToken = JSON.parse(paymentData.paymentMethodData.tokenizationData.token);
@@ -104,15 +129,23 @@ export function useGooglePay() {
           protocolVersion: paymentToken.protocolVersion,
           signedMessage: paymentToken.signedMessage,
         };
-      } catch (err) {
+      } catch (err: any) {
         console.error("Google Pay payment failed:", err);
-        throw new Error("Google Pay payment was cancelled or failed");
+        
+        // Handle specific error cases
+        if (err.statusCode === 'CANCELED') {
+          throw new Error("Google Pay payment was cancelled");
+        } else if (err.statusCode === 'DEVELOPER_ERROR') {
+          throw new Error("Google Pay configuration error");
+        } else {
+          throw new Error("Google Pay payment failed: " + err.message);
+        }
       }
     } else {
-      // Mock payment data for development/testing
-      console.log("Processing mock payment:", request);
+      // Mock payment data for development/testing when Google Pay is not available
+      console.log("Google Pay not available, processing mock payment:", request);
       
-      // Simulate payment processing delay
+      // Simulate payment UI delay
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       return {
@@ -143,5 +176,6 @@ declare global {
         };
       };
     };
+    googlePayReady?: boolean;
   }
 }

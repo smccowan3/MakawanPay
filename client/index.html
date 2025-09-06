@@ -37,6 +37,12 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     
+    <!-- Google Pay API -->
+    <script async
+      src="https://pay.google.com/gp/p/js/pay.js"
+      onload="onGooglePayLoaded()">
+    </script>
+    
     <!-- Service Worker Registration -->
     <script>
       if ('serviceWorker' in navigator) {
@@ -49,6 +55,12 @@
               console.log('SW registration failed: ', registrationError);
             });
         });
+      }
+      
+      // Google Pay loaded callback
+      function onGooglePayLoaded() {
+        console.log('Google Pay API loaded');
+        window.googlePayReady = true;
       }
     </script>
     
