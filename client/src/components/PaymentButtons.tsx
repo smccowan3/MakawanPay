@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, CreditCard, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useGooglePay } from "@/hooks/useGooglePay";
+import { useUnifiedPayment } from "@/hooks/useUnifiedPayment";
 import { hybridStorageService } from "@/lib/hybridStorage";
 
 interface PaymentButtonsProps {
@@ -12,7 +12,13 @@ interface PaymentButtonsProps {
 
 export default function PaymentButtons({ currentCount, onCountUpdate }: PaymentButtonsProps) {
   const { toast } = useToast();
-  const { processPayment, isGooglePayReady } = useGooglePay();
+  const { 
+    processPayment, 
+    isPaymentReady, 
+    getPaymentButtonText, 
+    getPaymentMethodName,
+    paymentMethod 
+  } = useUnifiedPayment();
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
   const [isAddingPayment, setIsAddingPayment] = useState(false);
 
@@ -80,7 +86,7 @@ export default function PaymentButtons({ currentCount, onCountUpdate }: PaymentB
     } catch (error: any) {
       toast({
         title: "お支払いエラー",
-        description: error.message || "Google Pay での支払いに失敗しました",
+        description: error.message || `${getPaymentMethodName()} での支払いに失敗しました`,
         variant: "destructive",
       });
     } finally {
@@ -88,7 +94,7 @@ export default function PaymentButtons({ currentCount, onCountUpdate }: PaymentB
     }
   };
 
-  const isMakePaymentDisabled = currentCount <= 0 || isPaymentProcessing || !isGooglePayReady;
+  const isMakePaymentDisabled = currentCount <= 0 || isPaymentProcessing || !isPaymentReady;
 
   return (
     <div className="space-y-4">
@@ -113,7 +119,11 @@ export default function PaymentButtons({ currentCount, onCountUpdate }: PaymentB
       <Button
         onClick={handleMakePayment}
         disabled={isMakePaymentDisabled}
-        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-4 px-6 rounded-lg button-elevation japanese-text text-lg h-auto disabled:opacity-50 disabled:cursor-not-allowed"
+        className={`w-full font-semibold py-4 px-6 rounded-lg button-elevation japanese-text text-lg h-auto disabled:opacity-50 disabled:cursor-not-allowed ${
+          paymentMethod === 'apple' 
+            ? 'bg-black hover:bg-gray-800 text-white' 
+            : 'bg-primary hover:bg-primary/90 text-primary-foreground'
+        }`}
         data-testid="button-make-payment"
       >
         <div className="flex items-center justify-center gap-3">
@@ -124,8 +134,17 @@ export default function PaymentButtons({ currentCount, onCountUpdate }: PaymentB
             </>
           ) : (
             <>
-              <CreditCard className="h-5 w-5" />
-              <span>お支払い実行</span>
+              {paymentMethod === 'apple' ? (
+                <>
+                  <span className="text-white text-lg">🍎</span>
+                  <span>{getPaymentButtonText()}</span>
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-5 w-5" />
+                  <span>{getPaymentButtonText()}</span>
+                </>
+              )}
             </>
           )}
         </div>
