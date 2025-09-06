@@ -1,28 +1,28 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, CreditCard, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 import { useGooglePay } from "@/hooks/useGooglePay";
+import { localStorageService } from "@/lib/localStorage";
 
 interface PaymentButtonsProps {
   currentCount: number;
+  onCountUpdate: (newCount: number) => void;
 }
 
-export default function PaymentButtons({ currentCount }: PaymentButtonsProps) {
+export default function PaymentButtons({ currentCount, onCountUpdate }: PaymentButtonsProps) {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const { processPayment, isGooglePayReady } = useGooglePay();
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+  const [isAddingPayment, setIsAddingPayment] = useState(false);
 
-  const addPaymentMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/payment-counter/default/add");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/payment-counter/default"] });
+  const handleAddPayment = async () => {
+    setIsAddingPayment(true);
+    
+    try {
+      const newCount = localStorageService.incrementPaymentCount();
+      onCountUpdate(newCount);
+      
       toast({
         title: "支払い追加完了",
         description: "支払い回数が追加されました",
@@ -36,52 +36,15 @@ export default function PaymentButtons({ currentCount }: PaymentButtonsProps) {
           console.log("Audio playback prevented by browser policy");
         });
       }
-    },
-    onError: () => {
+    } catch (error) {
       toast({
         title: "エラー",
         description: "支払い追加に失敗しました",
         variant: "destructive",
       });
-    },
-  });
-
-  const makePaymentMutation = useMutation({
-    mutationFn: async (paymentData: any) => {
-      const response = await apiRequest("POST", "/api/payment-counter/default/pay", {
-        amount: 100, // Default amount - in real app this would be configurable
-        currency: "JPY",
-        paymentData,
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/payment-counter/default"] });
-      toast({
-        title: "お支払い完了",
-        description: "お支払いが正常に処理されました",
-      });
-      
-      // Play payment success jingle
-      const audio = document.getElementById("paymentSuccessJingle") as HTMLAudioElement;
-      if (audio) {
-        audio.currentTime = 0;
-        audio.play().catch(() => {
-          console.log("Audio playback prevented by browser policy");
-        });
-      }
-    },
-    onError: (error: any) => {
-      toast({
-        title: "お支払いエラー",
-        description: error.message || "お支払い処理に失敗しました",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleAddPayment = () => {
-    addPaymentMutation.mutate();
+    } finally {
+      setIsAddingPayment(false);
+    }
   };
 
   const handleMakePayment = async () => {
@@ -96,12 +59,30 @@ export default function PaymentButtons({ currentCount }: PaymentButtonsProps) {
       });
       
       if (paymentData) {
-        makePaymentMutation.mutate(paymentData);
+        // Simulate processing delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const newCount = localStorageService.decrementPaymentCount();
+        onCountUpdate(newCount);
+        
+        toast({
+          title: "お支払い完了",
+          description: "お支払いが正常に処理されました",
+        });
+        
+        // Play payment success jingle
+        const audio = document.getElementById("paymentSuccessJingle") as HTMLAudioElement;
+        if (audio) {
+          audio.currentTime = 0;
+          audio.play().catch(() => {
+            console.log("Audio playback prevented by browser policy");
+          });
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "お支払いエラー",
-        description: "Google Pay での支払いに失敗しました",
+        description: error.message || "Google Pay での支払いに失敗しました",
         variant: "destructive",
       });
     } finally {
@@ -109,20 +90,19 @@ export default function PaymentButtons({ currentCount }: PaymentButtonsProps) {
     }
   };
 
-  const isAddPaymentLoading = addPaymentMutation.isPending;
-  const isMakePaymentDisabled = currentCount <= 0 || isPaymentProcessing || makePaymentMutation.isPending || !isGooglePayReady;
+  const isMakePaymentDisabled = currentCount <= 0 || isPaymentProcessing || !isGooglePayReady;
 
   return (
     <div className="space-y-4">
       {/* Add Payment Button */}
       <Button
         onClick={handleAddPayment}
-        disabled={isAddPaymentLoading}
+        disabled={isAddingPayment}
         className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold py-4 px-6 rounded-lg button-elevation japanese-text text-lg h-auto"
         data-testid="button-add-payment"
       >
         <div className="flex items-center justify-center gap-3">
-          {isAddPaymentLoading ? (
+          {isAddingPayment ? (
             <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
             <Plus className="h-5 w-5" />
@@ -139,7 +119,7 @@ export default function PaymentButtons({ currentCount }: PaymentButtonsProps) {
         data-testid="button-make-payment"
       >
         <div className="flex items-center justify-center gap-3">
-          {(isPaymentProcessing || makePaymentMutation.isPending) ? (
+          {isPaymentProcessing ? (
             <>
               <Loader2 className="h-5 w-5 animate-spin" />
               <span>処理中...</span>

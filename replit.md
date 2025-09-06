@@ -7,6 +7,7 @@ This is a Japanese payment application called "マカワンペイ" (Makawan Pay)
 - **Manual Counter Editing**: Added edit button next to counter display allowing manual input of payment count values
 - **Custom Audio Files**: Implemented audio settings dialog with file upload capability for custom jingle sounds
 - **TypeScript Improvements**: Fixed type safety issues in storage layer and component props
+- **Local Storage Implementation**: Converted app to use browser localStorage for data persistence, ensuring each user's data saves on their machine independently
 
 # User Preferences
 

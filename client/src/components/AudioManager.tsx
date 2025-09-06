@@ -1,23 +1,27 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Settings, Upload, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { localStorageService } from "@/lib/localStorage";
 
 export default function AudioManager() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [addPaymentAudioUrl, setAddPaymentAudioUrl] = useState(
-    "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIcAz2N2e/eYyAAPU0cXILH7dmYOggaXLLl76dTFApIo9/v2XwwBSB9yO/ddygFK3nF796OPAkUY7Pm46tXUwo="
-  );
-  const [paymentSuccessAudioUrl, setPaymentSuccessAudioUrl] = useState(
-    "data:audio/wav;base64,UklGRhQEAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YfADAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIcAz2N2e/ecSOBXwMAXYTF9N6OOQgQb7Dn46pYNAk="
-  );
+  const [addPaymentAudioUrl, setAddPaymentAudioUrl] = useState("");
+  const [paymentSuccessAudioUrl, setPaymentSuccessAudioUrl] = useState("");
 
   const addPaymentFileRef = useRef<HTMLInputElement>(null);
   const paymentSuccessFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Load audio settings from localStorage on component mount
+    const audioSettings = localStorageService.getAudioSettings();
+    setAddPaymentAudioUrl(audioSettings.addPaymentAudioUrl || "");
+    setPaymentSuccessAudioUrl(audioSettings.paymentSuccessAudioUrl || "");
+  }, []);
 
   const handleFileUpload = (file: File, type: 'add' | 'success') => {
     if (!file.type.startsWith('audio/')) {
@@ -34,8 +38,10 @@ export default function AudioManager() {
       const url = e.target?.result as string;
       if (type === 'add') {
         setAddPaymentAudioUrl(url);
+        localStorageService.setAddPaymentAudio(url);
       } else {
         setPaymentSuccessAudioUrl(url);
+        localStorageService.setPaymentSuccessAudio(url);
       }
       toast({
         title: "音声ファイル更新",

@@ -1,46 +1,20 @@
 import { useState } from "react";
 import { CreditCard, Edit3 } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 
 interface PaymentCounterProps {
   count: number;
+  onCountUpdate: (newCount: number) => void;
 }
 
-export default function PaymentCounter({ count }: PaymentCounterProps) {
+export default function PaymentCounter({ count, onCountUpdate }: PaymentCounterProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newCount, setNewCount] = useState(count.toString());
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const updateCounterMutation = useMutation({
-    mutationFn: async (newValue: number) => {
-      const response = await apiRequest("PATCH", "/api/payment-counter/default", {
-        count: newValue,
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/payment-counter/default"] });
-      toast({
-        title: "カウンター更新完了",
-        description: "支払い回数が更新されました",
-      });
-      setIsDialogOpen(false);
-    },
-    onError: () => {
-      toast({
-        title: "エラー",
-        description: "カウンター更新に失敗しました",
-        variant: "destructive",
-      });
-    },
-  });
 
   const handleUpdateCounter = (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +27,13 @@ export default function PaymentCounter({ count }: PaymentCounterProps) {
       });
       return;
     }
-    updateCounterMutation.mutate(value);
+    
+    onCountUpdate(value);
+    toast({
+      title: "カウンター更新完了",
+      description: "支払い回数が更新されました",
+    });
+    setIsDialogOpen(false);
   };
 
   return (
@@ -101,11 +81,10 @@ export default function PaymentCounter({ count }: PaymentCounterProps) {
               <div className="flex gap-2">
                 <Button 
                   type="submit" 
-                  disabled={updateCounterMutation.isPending}
                   className="flex-1 japanese-text"
                   data-testid="button-save-counter"
                 >
-                  {updateCounterMutation.isPending ? "更新中..." : "更新"}
+                  更新
                 </Button>
                 <Button 
                   type="button" 
